@@ -1,53 +1,29 @@
 #!/bin/bash
 
-cd /camp/lab/turnerj/working/shared_projects/LP_WGS_karyo/round2
+# example execution: ./lowpass.sh A15 500
 
-LIB=$(sed -n "${SLURM_ARRAY_TASK_ID}p" trimmed)
-VAR=$(echo $LIB | rev | cut -d "/" -f 1 | rev)
-SAMPLE=$(echo $VAR | cut -d "_" -f 1)
+sample=$1
+binSize=$2
 
-READ1="$LIB"_R1_001_trimmed.fq.gz
-READ2="$LIB"_R2_001_val_2.fq.gz
-READ3="$LIB"_unpaired.fq.gz
+outDir=/user/home/working_dir/results
+fastqDir=/user/home/working_dir/fastq
+genome=Mus_musculus/UCSC/mm10/Sequence/BWAIndex/genome.fa
 
-OUT=/camp/lab/turnerj/working/shared_projects/LP_WGS_karyo/round2/bams
-cd $OUT
-echo "cd $OUT"
+r1=$fastqDir/${sample}_R1.fastq.gz
+r2=$fastqDir/${sample}_R2.fastq.gz
+r3=$fastqDir/${sample}_unpaired.fastq.gz
 
-GENOME=/camp/svc/reference/Genomics/iGenomes/Mus_musculus/UCSC/mm10/Sequence/BWAIndex/genome.fa
+echo "running read mapping with bwa and postprocessing with samtools"
 
-echo "bwa mem -t 4 -B 2 -O 4,4 -L 3,3 -U 5 $GENOME $READ1 -R "@RG\tID:${SAMPLE}\tLB:${SAMPLE}\tSM:${SAMPLE}\tPL:"ILLUMINA"" > "$SAMPLE".sam"
-bwa mem -t 4 -B 2 -O 4,4 -L 3,3 -U 5 $GENOME $READ1 -R "@RG\tID:${SAMPLE}\tLB:${SAMPLE}\tSM:${SAMPLE}\tPL:"ILLUMINA"" > "$SAMPLE".sam
-bwa mem -t 4 -B 2 -O 4,4 -L 3,3 -U 5 $GENOME $READ3 -R "@RG\tID:${SAMPLE}\tLB:${SAMPLE}\tSM:${SAMPLE}\tPL:"ILLUMINA"" > "$SAMPLE"_unpaired.sam
+bwa mem -t 4 -B 2 -O 4,4 -L 3,3 -U 5 $genome $r1 $r2 -R "@RG\tID:${sample}\tLB:${sample}\tSM:${sample}\tPL:"ILLUMINA"" | samtools view -b - | samtools sort - -o $outDir/${sample}.bam
+samtools index $outDir/${sample}.bam
 
+bwa mem -t 4 -B 2 -O 4,4 -L 3,3 -U 5 $genome $r3 -R "@RG\tID:${sample}\tLB:${sample}\tSM:${sample}\tPL:"ILLUMINA"" | samtools view -b - | samtools sort - -o $outDir/${sample}_unpaired.bam
+samtools index $outDir/${sample}_unpaired.bam
 
-echo "samtools view -b "$SAMPLE".sam -o "$SAMPLE".bam"
-samtools view -b "$SAMPLE".sam -o "$SAMPLE".bam
-echo "samtools sort "$SAMPLE".bam -o "$SAMPLE".sorted.bam"
-samtools sort "$SAMPLE".bam -o "$SAMPLE".sorted.bam
-echo "samtools index "$SAMPLE".sorted.bam"
-samtools index "$SAMPLE".sorted.bam
-rm "$SAMPLE".sam "$SAMPLE".bam
+samtools merge -r - $outDir/${sample}.bam $outDir/${sample}_unpaired.bam | samtools sort - -o $outDir/${sample}_merged.bam
+samtools index $outDir/${sample}_merged.bam
 
-samtools view -b "$SAMPLE"_unpaired.sam -o "$SAMPLE"_unpaired.bam
-samtools sort "$SAMPLE"_unpaired.bam -o "$SAMPLE"_unpaired.sorted.bam
-samtools index "$SAMPLE"_unpaired.sorted.bam
-rm "$SAMPLE"_unpaired.sam "$SAMPLE"_unpaired.bam
+echo "running Rscript 'qdnaseq.r' with bin size $binSize for sample $sample"
 
-samtools merge -r "$SAMPLE".merged.bam "$SAMPLE".sorted.bam "$SAMPLE"_unpaired.sorted.bam
-samtools sort "$SAMPLE".merged.bam -o "$SAMPLE".merged.sorted.bam
-samtools index "$SAMPLE".merged.sorted.bam
-rm "$SAMPLE".merged.bam
-
-
-
-BIN=750
-DIR=/camp/lab/turnerj/working/shared_projects/LP_WGS_karyo/round2
-FILES=$DIR/bamfiles
-ALLCHR="T"
-OUT=$DIR/plots/
-
-echo "running Rscript 'qdnaseq.r' with bin size $BIN for file number $SLURM_ARRAY_TASK_ID from list $FILES in $DIR"
-echo "plotting all chromosomes is set to: $ALLCHR"
-
-Rscript qdnaseq.r $SLURM_ARRAY_TASK_ID $BIN $FILES $DIR $ALLCHR $OUT
+Rscript qdnaseq.r $sample $binSize $outDir
