@@ -1,10 +1,10 @@
 library(QDNAseq)
 library(glue)
 
-args <- commandArgs(trailingOnly = T)
-sample <- args[1]
+args 	 <- commandArgs(trailingOnly = T)
+sample 	 <- args[1]
 bin_size <- as.numeric(args[2])
-out_dir <- args[3]
+out_dir  <- args[3]
 
 setwd(out_dir)
 bam <- glue("{sample}_merged.bam")
@@ -22,9 +22,9 @@ p5 <- readCountsCorrected
 
 readCountsFiltered <- applyFilters(readCountsCorrected, chromosomes = NA)
 
-copyNumbers <- correctBins(readCountsFiltered)
-copyNumbersNormalized <- normalizeBins(copyNumbers)
-copyNumbersSmooth <- smoothOutlierBins(copyNumbersNormalized)
+copyNumbers 		<- correctBins(readCountsFiltered)
+copyNumbersNormalized 	<- normalizeBins(copyNumbers)
+copyNumbersSmooth 	<- smoothOutlierBins(copyNumbersNormalized)
 
 copyNumbersSegmented <- segmentBins(copyNumbersSmooth, transformFun = "sqrt")
 copyNumbersSegmented <- normalizeSegmentedBins(copyNumbersSegmented)
