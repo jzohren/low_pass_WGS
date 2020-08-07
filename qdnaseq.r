@@ -42,3 +42,4 @@ pdf(glue("{out_dir}/{sample}_{bin_size}.pdf")
 	isobarPlot(p4)
 	noisePlot(p5)
 dev.off()
+	
