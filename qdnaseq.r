@@ -1,5 +1,9 @@
+# loading R packages
+
 library(QDNAseq)
 library(glue)
+
+# variable definitions (supplied by shell script lowpass.sh)
 
 args 	 <- commandArgs(trailingOnly = T)
 sample 	 <- args[1]
@@ -8,6 +12,9 @@ out_dir  <- args[3]
 
 setwd(out_dir)
 bam <- glue("{sample}_merged.bam")
+
+# creating the bins object
+# and following the steps suggested in QDNAseq vignette
 
 bins <- getBinAnnotations(binSize = bin_size)
 
@@ -34,6 +41,7 @@ copyNumbersSegmented <- segmentBins(copyNumbersSmooth)
 copyNumbersSegmented <- normalizeSegmentedBins(copyNumbersSegmented)
 p2 <- copyNumbersSegmented
 
+# plotting all output in one PDF file
 
 pdf(glue("{out_dir}/{sample}_{bin_size}.pdf")
 	plot(p1, main = "SQRT")
